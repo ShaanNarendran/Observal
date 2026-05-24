@@ -90,6 +90,33 @@ def main(
     elif verbose:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
+    # Auto-update on minor/patch releases (non-blocking, exempt self/server commands)
+    _try_auto_update()
+
+
+def _try_auto_update() -> None:
+    """Attempt auto-update for minor/patch releases on startup.
+
+    Runs silently. On success, re-execs the CLI with the same arguments.
+    Exempt: self/server subcommands, CI, non-TTY.
+    """
+    if len(sys.argv) > 1 and sys.argv[1] in ("self", "server"):
+        return
+    if os.environ.get("CI") or os.environ.get("OBSERVAL_NO_UPDATE_CHECK"):
+        return
+    if os.environ.get("_OBSERVAL_AUTO_UPDATED"):
+        return  # Prevent infinite re-exec loop
+
+    try:
+        from observal_cli.version_check import auto_update_if_needed
+
+        if auto_update_if_needed():
+            # Re-exec the CLI with the same arguments so the new version runs
+            os.environ["_OBSERVAL_AUTO_UPDATED"] = "1"
+            os.execv(sys.executable, [sys.executable, "-m", "observal_cli", *sys.argv[1:]])
+    except Exception:
+        pass  # Never crash the CLI for auto-update
+
 
 # ── Register command groups ──────────────────────────────
 
@@ -169,11 +196,11 @@ except ImportError:
 
 
 def _show_update_banner() -> None:
-    """Post-command hook: show update notification if available.
+    """Post-command hook: show major version notification only.
 
-    Only on interactive TTY, never during self/server commands, never in CI.
-    If connected to a server (enterprise): targets the server's version.
-    Otherwise: targets the latest GitHub release.
+    Minor/patch mismatches are handled by auto-update.
+    Major.minor mismatches are hard-blocked by the version enforcement gate.
+    This banner only fires for major upgrades available in community mode.
     """
     import sys as _sys
 
@@ -191,25 +218,19 @@ def _show_update_banner() -> None:
         if not update:
             return
 
+        from packaging.version import Version
         from rich import print as _rprint
 
-        if update.source == "server":
-            if update.direction == "downgrade":
+        # Only show banner for major version upgrades (community mode)
+        # Hard block already handles minor mismatches; auto-update handles patches
+        if update.source == "github":
+            current_v = Version(update.current)
+            latest_v = Version(update.latest)
+            if latest_v.major > current_v.major:
                 _rprint(
-                    f"\n[yellow]Your server recommends v{update.latest}. "
-                    f"Downgrade: [bold]observal self downgrade --version {update.latest}[/bold][/yellow]"
+                    f"\n[yellow]Major update available: v{update.current} \u2192 v{update.latest}[/yellow]\n"
+                    f"  Run: [bold cyan]observal self upgrade --version {update.latest}[/bold cyan]"
                 )
-            else:
-                _rprint(
-                    f"\n[dim]Your server is v{update.latest}. "
-                    f"Match it: [bold]observal self upgrade --version {update.latest}[/bold][/dim]"
-                )
-        else:
-            _rprint(
-                f"\n[dim]Update available: v{update.current} \u2192 "
-                f"[green]v{update.latest}[/green] \u2022 "
-                f"[bold]observal self upgrade[/bold][/dim]"
-            )
     except Exception:
         pass  # Never crash the CLI for a version check
 

@@ -13,10 +13,16 @@ from typer.testing import CliRunner
 runner = CliRunner()
 
 
+@pytest.fixture(autouse=True)
+def disable_auto_update(monkeypatch):
+    """Disable auto-update and version checks in all self-command tests."""
+    monkeypatch.setenv("OBSERVAL_NO_UPDATE_CHECK", "1")
+
+
 @pytest.fixture
 def mock_version(monkeypatch):
     """Mock current CLI version."""
-    monkeypatch.setattr("observal_cli.version_check.get_current_version", lambda: "0.7.0")
+    monkeypatch.setattr("observal_cli.version_check.get_current_version", lambda: "1.2.0")
 
 
 @pytest.fixture
@@ -68,11 +74,11 @@ class TestSelfUpgrade:
     def test_upgrade_already_latest(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
         monkeypatch.setattr(
             "observal_cli.version_check._fetch_from_github",
-            lambda include_pre=False: {"latest_version": "0.7.0", "source": "github"},
+            lambda include_pre=False: {"latest_version": "1.2.0", "source": "github"},
         )
         app = _get_app()
         result = runner.invoke(app, ["self", "upgrade", "--force"])
-        assert "Already on v0.7.0" in result.output
+        assert "Already on v1.2.0" in result.output
 
     def test_upgrade_managed_install_blocked(self, mock_version, mock_install_brew, monkeypatch):
         app = _get_app()
@@ -80,7 +86,7 @@ class TestSelfUpgrade:
         assert "managed by brew" in result.output.lower() or "brew" in result.output
 
     def test_upgrade_specific_version(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
-        """--version 0.8.0 should attempt install of that version."""
+        """--version 1.3.0 should attempt install of that version."""
         install_called = {"version": None}
 
         def mock_do_install(info, target, direction):
@@ -88,13 +94,13 @@ class TestSelfUpgrade:
 
         monkeypatch.setattr("observal_cli.cmd_ops._do_install", mock_do_install)
         app = _get_app()
-        result = runner.invoke(app, ["self", "upgrade", "--version", "0.8.0", "--force"])
-        assert install_called["version"] == "0.8.0"
+        result = runner.invoke(app, ["self", "upgrade", "--version", "1.3.0", "--force"])
+        assert install_called["version"] == "1.3.0"
 
     def test_upgrade_older_version_rejected(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
         """Attempting to 'upgrade' to an older version should fail."""
         app = _get_app()
-        result = runner.invoke(app, ["self", "upgrade", "--version", "0.5.0", "--force"])
+        result = runner.invoke(app, ["self", "upgrade", "--version", "1.0.0", "--force"])
         assert "older" in result.output.lower() or "downgrade" in result.output.lower()
 
 
@@ -118,24 +124,32 @@ class TestSelfDowngrade:
         assert "0.7.0" in result.output
         assert "0.6.0" in result.output
 
-    def test_downgrade_below_minimum_warns(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
-        """Downgrading below MIN_CLI_VERSION should warn."""
-        monkeypatch.setattr("observal_cli.cmd_ops._get_server_min_version", lambda: "0.6.0")
+    def test_downgrade_below_floor_rejected(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
+        """Downgrading below VERSION_FLOOR (1.0.0) is always rejected."""
+        monkeypatch.setattr("observal_cli.cmd_ops._get_server_min_version", lambda: "1.0.0")
+        app = _get_app()
+        result = runner.invoke(app, ["self", "downgrade", "--version", "0.9.0", "--force"])
+        assert result.exit_code == 1
+        assert "Cannot downgrade below" in result.output or "1.0.0" in result.output
+
+    def test_downgrade_below_server_min_warns(self, mock_version, mock_install_uv, mock_lock, monkeypatch):
+        """Downgrading below server min (but above floor) should warn."""
+        monkeypatch.setattr("observal_cli.cmd_ops._get_server_min_version", lambda: "1.2.0")
 
         def mock_do_install(info, target, direction):
             pass
 
         monkeypatch.setattr("observal_cli.cmd_ops._do_install", mock_do_install)
         app = _get_app()
-        # Without --force, prompt appears. With --force, it bypasses.
-        result = runner.invoke(app, ["self", "downgrade", "--version", "0.4.0", "--force"])
+        # 1.1.0 is above floor but below server min
+        result = runner.invoke(app, ["self", "downgrade", "--version", "1.1.0", "--force"])
         # Should still proceed with --force (no error exit)
         assert result.exit_code == 0 or "below server minimum" in result.output
 
     def test_downgrade_target_is_newer(self, mock_version, monkeypatch):
         """Downgrade to a newer version should error."""
         app = _get_app()
-        result = runner.invoke(app, ["self", "downgrade", "--version", "0.9.0"])
+        result = runner.invoke(app, ["self", "downgrade", "--version", "1.3.0"])
         assert "not older" in result.output.lower() or "upgrade" in result.output.lower()
 
 
@@ -157,9 +171,9 @@ class TestSelfStatus:
     def test_status_shows_version(self, mock_version, mock_install_uv, monkeypatch):
         monkeypatch.setattr(
             "observal_cli.version_check._fetch_from_github",
-            lambda include_pre=False: {"latest_version": "0.8.0", "source": "github"},
+            lambda include_pre=False: {"latest_version": "1.3.0", "source": "github"},
         )
         monkeypatch.setattr("observal_cli.cmd_ops._get_server_min_version", lambda: None)
         app = _get_app()
         result = runner.invoke(app, ["self", "status"])
-        assert "0.7.0" in result.output
+        assert "1.2.0" in result.output

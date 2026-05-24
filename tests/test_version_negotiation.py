@@ -15,7 +15,7 @@ class TestEffectiveVersionMin:
         """effective = min(cli, server)"""
         from packaging.version import Version
 
-        cli = "0.8.0"
+        cli = "1.0.0"
         server = "0.6.0"
         effective = str(min(Version(cli), Version(server)))
         assert effective == "0.6.0"
@@ -29,14 +29,14 @@ class TestEffectiveVersionMin:
     def test_min_cli_older(self):
         from packaging.version import Version
 
-        effective = str(min(Version("0.5.0"), Version("0.8.0")))
+        effective = str(min(Version("0.5.0"), Version("1.0.0")))
         assert effective == "0.5.0"
 
 
 class TestFeatureGating:
     def test_feature_available_at_version(self):
         assert is_available("agent_insights", "0.7.0") is True
-        assert is_available("agent_insights", "0.8.0") is True
+        assert is_available("agent_insights", "1.0.0") is True
 
     def test_feature_not_available_below_version(self):
         assert is_available("agent_insights", "0.6.0") is False
@@ -57,7 +57,7 @@ class TestServerSupports:
     def test_server_supports_checks_effective(self, monkeypatch):
         """server_supports() uses min(cli, server) for gating."""
         monkeypatch.setattr("observal_cli.client._server_version_cache", "0.6.0")
-        monkeypatch.setattr("observal_cli.client._get_cli_version", lambda: "0.8.0")
+        monkeypatch.setattr("observal_cli.client._get_cli_version", lambda: "1.0.0")
 
         from observal_cli.client import server_supports
 
@@ -74,7 +74,7 @@ class TestHeaderSpoofingSafe:
 
         # Attacker sends X-Observal-CLI-Version: 0.1.0
         spoofed_cli = "0.1.0"
-        server = "0.8.0"
+        server = "1.0.0"
         effective = str(min(Version(spoofed_cli), Version(server)))
         assert effective == "0.1.0"
 

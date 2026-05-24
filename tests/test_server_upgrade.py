@@ -59,9 +59,9 @@ class TestServerUpgrade:
         monkeypatch.setattr("observal_cli.cmd_server._find_compose_dir", lambda: compose_dir)
         monkeypatch.setattr("observal_cli.version_check.verify_server_image_exists", lambda v: True)
         app = _get_app()
-        result = runner.invoke(app, ["server", "upgrade", "--version", "0.8.0", "--dry-run"])
+        result = runner.invoke(app, ["server", "upgrade", "--version", "1.0.0", "--dry-run"])
         assert "Dry run" in result.output
-        assert "0.8.0" in result.output
+        assert "1.0.0" in result.output
 
 
 class TestServerRollback:
@@ -78,7 +78,7 @@ class TestServerVersions:
         monkeypatch.setattr("observal_cli.cmd_server._find_compose_dir", lambda: compose_dir)
         monkeypatch.setattr(
             "observal_cli.version_check.fetch_available_server_images",
-            lambda: ["0.8.0", "0.7.0", "0.6.0"],
+            lambda: ["1.0.0", "0.7.0", "0.6.0"],
         )
         monkeypatch.setattr("observal_cli.server.backup.list_backups", lambda: [])
         app = _get_app()
@@ -101,7 +101,7 @@ class TestEnvVersionUpdate:
 
         env = tmp_path / ".env"
         env.write_text("OTHER_VAR=hello\n")
-        _update_env_version(tmp_path, "0.8.0")
+        _update_env_version(tmp_path, "1.0.0")
         content = env.read_text()
-        assert "OBSERVAL_VERSION=0.8.0" in content
+        assert "OBSERVAL_VERSION=1.0.0" in content
         assert "OTHER_VAR=hello" in content

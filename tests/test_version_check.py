@@ -77,8 +77,8 @@ class TestShouldCheck:
 
 
 MOCK_RELEASE_RESPONSE = {
-    "tag_name": "v0.8.0",
-    "html_url": "https://github.com/BlazeUp-AI/Observal/releases/tag/v0.8.0",
+    "tag_name": "v1.0.0",
+    "html_url": "https://github.com/BlazeUp-AI/Observal/releases/tag/v1.0.0",
     "published_at": "2026-05-20T10:00:00Z",
     "prerelease": False,
     "assets": [],
@@ -94,7 +94,7 @@ class TestFetchFromGithub:
         monkeypatch.setattr(httpx, "get", mock_get)
         result = version_check._fetch_from_github()
         assert result is not None
-        assert result["latest_version"] == "0.8.0"
+        assert result["latest_version"] == "1.0.0"
         assert result["source"] == "github"
 
     def test_404_returns_none(self, monkeypatch):
@@ -154,7 +154,7 @@ class TestFetchFromGithub:
 
 class TestIsNewer:
     def test_newer_true(self):
-        assert version_check._is_newer("0.8.0", "0.7.0") is True
+        assert version_check._is_newer("1.0.0", "0.7.0") is True
 
     def test_newer_false(self):
         assert version_check._is_newer("0.6.0", "0.7.0") is False
@@ -163,7 +163,7 @@ class TestIsNewer:
         assert version_check._is_newer("0.7.0", "0.7.0") is False
 
     def test_prerelease_newer_than_stable(self):
-        assert version_check._is_newer("0.8.0a1", "0.7.0") is True
+        assert version_check._is_newer("1.0.0a1", "0.7.0") is True
 
 
 # ── maybe_check tests ───────────────────────────────────────────
@@ -185,20 +185,20 @@ class TestMaybeCheck:
         monkeypatch.setattr(
             version_check,
             "_resolve_update_source",
-            lambda: {"latest_version": "0.8.0", "release_url": "", "published_at": "", "source": "github"},
+            lambda: {"latest_version": "1.0.0", "release_url": "", "published_at": "", "source": "github"},
         )
         result = version_check.maybe_check()
         assert result is not None
-        assert result.latest == "0.8.0"
+        assert result.latest == "1.0.0"
         assert result.current == "0.7.0"
 
     def test_returns_none_when_current(self, mock_config, monkeypatch, isolated_cache):
         mock_config()
-        monkeypatch.setattr(version_check, "get_current_version", lambda: "0.8.0")
+        monkeypatch.setattr(version_check, "get_current_version", lambda: "1.0.0")
         monkeypatch.setattr(
             version_check,
             "_resolve_update_source",
-            lambda: {"latest_version": "0.8.0", "release_url": "", "published_at": "", "source": "github"},
+            lambda: {"latest_version": "1.0.0", "release_url": "", "published_at": "", "source": "github"},
         )
         assert version_check.maybe_check() is None
 
@@ -213,7 +213,7 @@ class TestCacheIntegrity:
         version_check._write_cache(
             {
                 "last_checked": datetime.now(UTC).isoformat(),
-                "latest_version": "0.8.0",
+                "latest_version": "1.0.0",
                 "release_url": "",
                 "published_at": "",
                 "source": "github",
@@ -233,13 +233,13 @@ class TestCacheIntegrity:
         version_check._write_cache(
             {
                 "last_checked": datetime.now(UTC).isoformat(),
-                "latest_version": "0.8.0",
+                "latest_version": "1.0.0",
                 "fetch_failed": False,
             }
         )
         cache = version_check._read_cache()
         assert cache is not None
-        assert cache["latest_version"] == "0.8.0"
+        assert cache["latest_version"] == "1.0.0"
 
     def test_cache_atomic_write(self, isolated_cache, tmp_path):
         """Verify no .tmp file left behind after write."""
@@ -254,7 +254,7 @@ class TestCacheIntegrity:
 class TestFetchAllReleases:
     def test_pagination(self, monkeypatch):
         page1 = [
-            {"tag_name": "v0.8.0", "published_at": "2026-05-20", "prerelease": False, "html_url": ""},
+            {"tag_name": "v1.0.0", "published_at": "2026-05-20", "prerelease": False, "html_url": ""},
             {"tag_name": "v0.7.0", "published_at": "2026-05-10", "prerelease": False, "html_url": ""},
         ]
         page2 = []
@@ -270,5 +270,148 @@ class TestFetchAllReleases:
         monkeypatch.setattr(httpx, "get", mock_get)
         results = version_check.fetch_all_releases()
         assert len(results) == 2
-        assert results[0]["version"] == "0.8.0"
+        assert results[0]["version"] == "1.0.0"
         assert results[1]["version"] == "0.7.0"
+
+
+# ── Version floor tests ─────────────────────────────────────────
+
+
+class TestVersionFloor:
+    def test_floor_constant_exists(self):
+        assert version_check.VERSION_FLOOR == "1.0.0"
+
+    def test_check_version_floor_above(self):
+        assert version_check.check_version_floor("1.0.0") is True
+        assert version_check.check_version_floor("1.0.1") is True
+        assert version_check.check_version_floor("2.0.0") is True
+
+    def test_check_version_floor_below(self):
+        assert version_check.check_version_floor("0.9.0") is False
+        assert version_check.check_version_floor("0.8.0") is False
+        assert version_check.check_version_floor("0.0.1") is False
+
+    def test_check_version_floor_invalid(self):
+        assert version_check.check_version_floor("not-a-version") is False
+
+
+# ── Auto-update tests ───────────────────────────────────────────
+
+
+class TestAutoUpdate:
+    def test_disabled_via_config(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {"auto_update": False})
+        assert version_check.auto_update_if_needed() is False
+
+    def test_disabled_via_env(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setenv("OBSERVAL_NO_UPDATE_CHECK", "1")
+        assert version_check.auto_update_if_needed() is False
+
+    def test_disabled_in_ci(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setenv("CI", "true")
+        assert version_check.auto_update_if_needed() is False
+
+    def test_no_update_when_current(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setattr(version_check, "get_current_version", lambda: "1.0.0")
+        monkeypatch.setattr(
+            version_check,
+            "_resolve_update_source",
+            lambda: {"latest_version": "1.0.0", "source": "github"},
+        )
+        assert version_check.auto_update_if_needed() is False
+
+    def test_major_jump_not_auto_applied(self, monkeypatch, capsys):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setattr(version_check, "get_current_version", lambda: "1.0.0")
+        monkeypatch.setattr(
+            version_check,
+            "_resolve_update_source",
+            lambda: {"latest_version": "2.0.0", "source": "github"},
+        )
+        # Non-TTY so no rich output
+        import sys
+
+        monkeypatch.setattr(sys.stdout, "isatty", lambda: False)
+        assert version_check.auto_update_if_needed() is False
+
+    def test_below_floor_not_applied(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setattr(version_check, "get_current_version", lambda: "1.0.0")
+        monkeypatch.setattr(
+            version_check,
+            "_resolve_update_source",
+            lambda: {"latest_version": "0.9.0", "source": "server"},
+        )
+        assert version_check.auto_update_if_needed() is False
+
+    def test_minor_update_triggers_silent_install(self, monkeypatch):
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+        monkeypatch.setattr(version_check, "get_current_version", lambda: "1.0.0")
+        monkeypatch.setattr(
+            version_check,
+            "_resolve_update_source",
+            lambda: {"latest_version": "1.1.0", "source": "github"},
+        )
+
+        # Mock install_detector and upgrade_executor
+        import observal_cli.install_detector as id_mod
+        import observal_cli.upgrade_executor as ue_mod
+        from observal_cli.install_detector import InstallInfo, InstallMethod
+
+        fake_info = InstallInfo(method=InstallMethod.UV_TOOL, path="/fake", writable=True, managed_by=None)
+        monkeypatch.setattr(id_mod, "detect", lambda: fake_info)
+        monkeypatch.setattr(ue_mod, "execute_silent", lambda info, ver, direction: True)
+
+        assert version_check.auto_update_if_needed() is True
+
+
+# ── Enterprise vs Community path tests ──────────────────────────
+
+
+class TestEnterpriseVsCommunity:
+    def test_enterprise_uses_server_version_directly(self, monkeypatch):
+        """In enterprise mode, server_version IS the target (no recommended_cli_version)."""
+
+        def mock_get(*args, **kwargs):
+            return httpx.Response(
+                200,
+                json={
+                    "server_version": "1.2.0",
+                    "min_cli_version": "1.0.0",
+                },
+            )
+
+        monkeypatch.setattr(httpx, "get", mock_get)
+        result = version_check._fetch_from_server("http://server:8000", "token123")
+        assert result is not None
+        assert result["latest_version"] == "1.2.0"
+        assert result["source"] == "server"
+        assert result["server_version"] == "1.2.0"
+
+    def test_community_falls_back_to_github(self, monkeypatch):
+        """Without a server, falls back to GitHub Releases."""
+        monkeypatch.setattr(version_check, "load_config", lambda: {})
+
+        def mock_get(*args, **kwargs):
+            url = args[0] if args else kwargs.get("url", "")
+            if "github.com" in url:
+                return httpx.Response(
+                    200,
+                    json={
+                        "tag_name": "v1.1.0",
+                        "html_url": "https://github.com/BlazeUp-AI/Observal/releases/tag/v1.1.0",
+                        "published_at": "2026-06-01T10:00:00Z",
+                        "prerelease": False,
+                        "assets": [],
+                    },
+                )
+            return httpx.Response(404)
+
+        monkeypatch.setattr(httpx, "get", mock_get)
+        result = version_check._resolve_update_source()
+        assert result is not None
+        assert result["latest_version"] == "1.1.0"
+        assert result["source"] == "github"

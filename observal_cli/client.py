@@ -21,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 # Cached server version for the process lifetime
 _server_version_cache: str | None = None
+# Whether version enforcement has already run this session
+_version_enforced: bool = False
+
+# Subcommands exempt from version enforcement (user needs these to fix mismatches)
+_EXEMPT_SUBCOMMANDS = frozenset({"self", "server"})
 
 
 def _get_cli_version() -> str:
@@ -35,10 +40,34 @@ def _get_cli_version() -> str:
 
 def _client() -> tuple[str, dict]:
     cfg = config.get_or_exit()
-    return cfg["server_url"].rstrip("/"), {
+    base_url = cfg["server_url"].rstrip("/")
+    headers = {
         "Authorization": f"Bearer {cfg['access_token']}",
         "X-Observal-CLI-Version": _get_cli_version(),
     }
+    # Run version enforcement once per session (unless exempt subcommand)
+    _enforce_version_once(base_url)
+    return base_url, headers
+
+
+def _enforce_version_once(server_url: str) -> None:
+    """Run version enforcement exactly once per CLI session.
+
+    Checks if CLI major.minor matches server. Hard exits on mismatch.
+    Exempt: `observal self` and `observal server` subcommands.
+    """
+    global _version_enforced
+    if _version_enforced:
+        return
+    _version_enforced = True
+
+    # Check if current subcommand is exempt
+    import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] in _EXEMPT_SUBCOMMANDS:
+        return
+
+    check_version_compatibility(server_url)
 
 
 def _handle_error(e: httpx.HTTPStatusError, path: str = ""):
@@ -362,12 +391,17 @@ def health() -> tuple[bool, float]:
 
 
 def check_version_compatibility(server_url: str) -> None:
-    """Warn if CLI version is older than server's minimum requirement."""
-    from importlib.metadata import version as pkg_version
+    """Enforce CLI/server version match. Hard exit on major.minor mismatch.
 
-    try:
-        cli_ver_str = pkg_version("observal-cli")
-    except Exception:
+    The server version is the canonical target. CLI must match its major.minor.
+    Patch differences are tolerated (e.g. CLI 1.0.1 vs server 1.0.0 is fine).
+    """
+    from packaging.version import InvalidVersion, Version
+
+    from observal_cli.version_check import get_current_version
+
+    cli_ver_str = get_current_version()
+    if cli_ver_str == "0.0.0":
         return  # dev install, skip check
 
     try:
@@ -376,27 +410,41 @@ def check_version_compatibility(server_url: str) -> None:
             return
         data = r.json()
     except Exception:
-        return  # server doesn't support this endpoint yet, skip
+        return  # server unreachable or doesn't support this endpoint
 
-    min_cli = data.get("min_cli_version")
-    server_ver = data.get("server_version", "unknown")
-    if not min_cli:
-        return
+    server_ver = data.get("server_version")
+    if not server_ver or server_ver == "dev":
+        return  # dev server, skip enforcement
 
     try:
-        cli_tuple = tuple(int(x) for x in cli_ver_str.split("."))
-        min_tuple = tuple(int(x) for x in min_cli.split("."))
-        if cli_tuple < min_tuple:
-            rprint(
-                f"\n[bold yellow]⚠ CLI version {cli_ver_str} is older than the server requires "
-                f"(minimum {min_cli}).[/bold yellow]\n"
-                f"  Server version: {server_ver}\n"
-                f"  Please upgrade:\n\n"
-                f"    [cyan]uv tool upgrade observal-cli[/cyan]    "
-                f"[dim]# or: pip install --upgrade observal-cli[/dim]\n"
-            )
-    except (ValueError, TypeError):
-        pass
+        cli_v = Version(cli_ver_str)
+        srv_v = Version(server_ver)
+    except InvalidVersion:
+        return
+
+    # Compare major.minor only — patch differences are tolerated
+    cli_major_minor = (cli_v.major, cli_v.minor)
+    srv_major_minor = (srv_v.major, srv_v.minor)
+
+    if cli_major_minor == srv_major_minor:
+        return  # versions match, all good
+
+    # Mismatch — hard block
+    if cli_major_minor > srv_major_minor:
+        rprint(
+            f"\n[bold red]✖ CLI version {cli_ver_str} is ahead of server {server_ver}.[/bold red]\n"
+            f"  The server is the source of truth for versioning.\n"
+            f"  Downgrade your CLI to match the server:\n\n"
+            f"    [cyan]observal self downgrade --version {server_ver}[/cyan]\n"
+        )
+    else:
+        rprint(
+            f"\n[bold red]✖ CLI version {cli_ver_str} is behind server {server_ver}.[/bold red]\n"
+            f"  The server is the source of truth for versioning.\n"
+            f"  Upgrade your CLI to match the server:\n\n"
+            f"    [cyan]observal self upgrade --version {server_ver}[/cyan]\n"
+        )
+    raise typer.Exit(1)
 
 
 def server_supports(feature: str) -> bool:

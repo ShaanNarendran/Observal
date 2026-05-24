@@ -36,8 +36,13 @@ FEATURE_VERSIONS: dict[str, str] = {
     # v0.8.0
     "agent_builder": "0.8.0",
     "eval_ragas": "0.8.0",
-    "version_negotiation": "0.8.0",
-    "self_upgrade": "0.8.0",
+    # v1.0.0
+    "version_check": "1.0.0",
+    "version_enforcement": "1.0.0",
+    "self_upgrade": "1.0.0",
+    "server_upgrade": "1.0.0",
+    "auto_update": "1.0.0",
+    "version_negotiation": "1.0.0",
 }
 
 

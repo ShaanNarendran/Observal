@@ -50,6 +50,9 @@ REDIRECT_ALLOWLIST = frozenset(
     ]
 )
 
+# Hard floor: versioning didn't exist before 1.0.0, never allow going below this.
+VERSION_FLOOR = "1.0.0"
+
 
 @dataclass(frozen=True)
 class UpdateAvailable:
@@ -71,6 +74,19 @@ def get_current_version() -> str:
         return version("observal-cli")
     except Exception:
         return "0.0.0"
+
+
+def check_version_floor(target: str) -> bool:
+    """Return True if target version is at or above the version floor.
+
+    Rejects any version below 1.0.0 since versioning didn't exist before that.
+    """
+    from packaging.version import InvalidVersion, Version
+
+    try:
+        return Version(target) >= Version(VERSION_FLOOR)
+    except InvalidVersion:
+        return False
 
 
 def _github_repo() -> str:
@@ -194,9 +210,10 @@ def _should_check(cache: dict | None, interval: int) -> bool:
 
 
 def _fetch_from_server(server_url: str, token: str) -> dict | None:
-    """Check connected server for recommended CLI version.
+    """Check connected server for its version (the canonical target for CLI).
 
     Returns dict with latest_version, release_url, source="server" or None.
+    The server_version IS the target — CLI must match it.
     """
     try:
         resp = httpx.get(
@@ -213,24 +230,24 @@ def _fetch_from_server(server_url: str, token: str) -> dict | None:
         if not isinstance(data, dict):
             return None
 
-        # Use recommended_cli_version if set, otherwise server_version
-        recommended = data.get("recommended_cli_version") or data.get("server_version")
-        if not recommended:
+        # Server version is the canonical target — CLI must match it
+        server_ver = data.get("server_version")
+        if not server_ver:
             return None
 
         from packaging.version import InvalidVersion, Version
 
         try:
-            Version(recommended)
+            Version(server_ver)
         except InvalidVersion:
             return None
 
         return {
-            "latest_version": recommended,
+            "latest_version": server_ver,
             "release_url": "",
             "published_at": "",
             "source": "server",
-            "server_version": data.get("server_version", ""),
+            "server_version": server_ver,
         }
     except (httpx.HTTPError, json.JSONDecodeError, KeyError):
         return None
@@ -526,3 +543,84 @@ def fetch_all_releases(include_pre: bool = False) -> list[dict]:
         except Exception:
             break
     return results
+
+
+# ── Auto-update logic ─────────────────────────────────────────────────────
+
+
+def auto_update_if_needed() -> bool:
+    """Auto-update CLI if a minor/patch update is available. Returns True if update applied.
+
+    Behavior:
+    - Enterprise (server connected): match server version exactly.
+    - Community (GitHub): update to latest minor/patch, prompt for major.
+    - Respects `auto_update` config (default: true).
+    - Never auto-updates across major versions without explicit consent.
+    - Enforces VERSION_FLOOR.
+    """
+    from packaging.version import InvalidVersion, Version
+
+    cfg = load_config()
+    if not cfg.get("auto_update", True):
+        return False
+    if os.environ.get("OBSERVAL_NO_UPDATE_CHECK") or os.environ.get("CI"):
+        return False
+
+    current_str = get_current_version()
+    if current_str == "0.0.0":
+        return False  # dev install
+
+    try:
+        current = Version(current_str)
+    except InvalidVersion:
+        return False
+
+    # Determine target version
+    release = _resolve_update_source()
+    if release is None:
+        return False
+
+    target_str = release["latest_version"]
+    try:
+        target = Version(target_str)
+    except InvalidVersion:
+        return False
+
+    # No update needed if already at target
+    if target == current:
+        return False
+
+    # Enforce version floor
+    if target < Version(VERSION_FLOOR):
+        return False
+
+    # Determine if this is a major version jump
+    is_major_jump = target.major != current.major
+
+    if is_major_jump:
+        # Major version changes require explicit action — just inform, don't auto-update
+        import sys
+
+        if sys.stdout.isatty():
+            from rich import print as _rprint
+
+            _rprint(
+                f"\n[yellow]Major update available: v{current_str} → v{target_str}[/yellow]\n"
+                f"  This may include breaking changes.\n"
+                f"  Run: [bold cyan]observal self upgrade --version {target_str}[/bold cyan]\n"
+            )
+        return False
+
+    # Minor/patch — auto-update silently
+    try:
+        from observal_cli.install_detector import InstallMethod, detect
+        from observal_cli.upgrade_executor import execute_silent
+
+        install_info = detect()
+        if install_info.method in (InstallMethod.HOMEBREW, InstallMethod.SYSTEM_PACKAGE):
+            return False  # managed installs can't be auto-updated
+
+        direction = "upgrade" if target > current else "downgrade"
+        return execute_silent(install_info, target_str, direction)
+    except Exception:
+        return False  # Never crash CLI for auto-update failures
