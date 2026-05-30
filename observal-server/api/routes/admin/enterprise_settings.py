@@ -14,6 +14,7 @@ from config import HAS_LICENSE, settings
 from models.enterprise_config import EnterpriseConfig
 from models.user import User, UserRole
 from schemas.admin import EnterpriseConfigResponse, EnterpriseConfigUpdate
+from services.dynamic_settings import SENSITIVE_KEYS, encrypt_value, mask_value
 from services.security_events import EventType, SecurityEvent, Severity, emit_security_event
 
 from ._router import router
@@ -125,7 +126,12 @@ async def list_settings(
 ):
     optic.debug("admin settings list")
     result = await db.execute(select(EnterpriseConfig).order_by(EnterpriseConfig.key))
-    configs = [EnterpriseConfigResponse.model_validate(c) for c in result.scalars().all()]
+    configs = []
+    for c in result.scalars().all():
+        resp = EnterpriseConfigResponse.model_validate(c)
+        if resp.key in SENSITIVE_KEYS:
+            resp.value = mask_value(resp.key, resp.value)
+        configs.append(resp)
     return configs
 
 
@@ -140,7 +146,10 @@ async def get_setting(
     cfg = result.scalar_one_or_none()
     if not cfg:
         raise HTTPException(status_code=404, detail="Setting not found")
-    return EnterpriseConfigResponse.model_validate(cfg)
+    resp = EnterpriseConfigResponse.model_validate(cfg)
+    if resp.key in SENSITIVE_KEYS:
+        resp.value = mask_value(resp.key, resp.value)
+    return resp
 
 
 @router.put("/settings/{key}", response_model=EnterpriseConfigResponse)
@@ -156,12 +165,15 @@ async def upsert_setting(
     elif key == "branding.app_name":
         _validate_branding_app_name(req.value)
 
+    # Encrypt sensitive values before storing
+    store_value = encrypt_value(req.value) if key in SENSITIVE_KEYS else req.value
+
     result = await db.execute(select(EnterpriseConfig).where(EnterpriseConfig.key == key))
     cfg = result.scalar_one_or_none()
     if cfg:
-        cfg.value = req.value
+        cfg.value = store_value
     else:
-        cfg = EnterpriseConfig(key=key, value=req.value)
+        cfg = EnterpriseConfig(key=key, value=store_value)
         db.add(cfg)
     await db.commit()
     await db.refresh(cfg)
@@ -177,7 +189,10 @@ async def upsert_setting(
             target_type="setting",
         )
     )
-    return EnterpriseConfigResponse.model_validate(cfg)
+    resp = EnterpriseConfigResponse.model_validate(cfg)
+    if resp.key in SENSITIVE_KEYS:
+        resp.value = mask_value(resp.key, req.value)
+    return resp
 
 
 @router.delete("/settings/{key}")

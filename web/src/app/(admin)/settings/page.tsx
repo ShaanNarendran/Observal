@@ -56,17 +56,19 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-// Sensitive keys that should be masked in display
+// Sensitive keys: write-only, never returned in plaintext from the API
 const SENSITIVE_KEYS = new Set([
+	"insights.aws_access_key_id",
+	"insights.aws_secret_access_key",
+	"insights.aws_session_token",
 	"saml.idp_x509_cert",
 	"saml.sp_key_encryption_password",
 ]);
 
 function maskValue(key: string, value: string): string {
 	if (!SENSITIVE_KEYS.has(key)) return value;
-	if (!value || value.length <= 4)
-		return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
-	return "\u2022\u2022\u2022\u2022\u2022\u2022" + value.slice(-4);
+	if (!value) return "";
+	return "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022";
 }
 
 /** Generate a helpful placeholder for the value input based on the key */

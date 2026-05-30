@@ -520,12 +520,17 @@ async def _read_all_from_db() -> dict[str, str]:
 
 
 def mask_value(key: str, value: str) -> str:
-    """Mask sensitive values for API display."""
+    """Mask sensitive values for API display.
+
+    Returns a fixed mask indicating a value is set. Never reveals any portion
+    of the actual value (encrypted or plaintext) since sensitive settings are
+    write-only.
+    """
     if key not in SENSITIVE_KEYS:
         return value
-    if not value or len(value) <= 4:
-        return "••••••••"
-    return "••••••" + value[-4:]
+    if not value:
+        return ""
+    return "••••••••"
 
 
 # ─── Sync cache for module-level / sync-function access ──────────────────────
