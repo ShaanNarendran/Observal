@@ -58,6 +58,10 @@ import {
 
 // Sensitive keys that should be masked in display
 const SENSITIVE_KEYS = new Set([
+	"insights.aws_access_key_id",
+	"insights.aws_secret_access_key",
+	"insights.aws_session_token",
+	"insights.model_api_key",
 	"saml.idp_x509_cert",
 	"saml.sp_key_encryption_password",
 ]);
@@ -76,6 +80,8 @@ function getPlaceholder(key: string): string {
 		"insights.model_sections": "us.anthropic.claude-opus-4-6-v1",
 		"insights.model_synthesis": "us.anthropic.claude-sonnet-4-6-v1",
 		"insights.model_facets": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+		"insights.model_url": "https://api.moonshot.ai/v1",
+		"insights.model_api_key": "sk-...",
 		"insights.batch_enabled": "true",
 		"insights.batch_period_days": "14",
 		"insights.min_sessions": "5",
@@ -217,6 +223,20 @@ const SETTING_SECTIONS: SettingSection[] = [
 				subtitle: "Model for per-session facet extraction (e.g. Haiku)",
 				tooltip:
 					"Bedrock model ID for extracting structured facets from sessions. Use a cheap model here since it runs many times. Example: us.anthropic.claude-haiku-4-5-20251001-v1:0",
+			},
+			{
+				key: "insights.model_url",
+				label: "Model API URL",
+				subtitle: "OpenAI-compatible endpoint (non-Bedrock)",
+				tooltip:
+					"Base URL for an OpenAI-compatible API. Only needed when using a non-Bedrock model (e.g. Ollama, Moonshot). Example: https://api.moonshot.ai/v1",
+			},
+			{
+				key: "insights.model_api_key",
+				label: "Model API Key",
+				subtitle: "API key for non-Bedrock model provider",
+				tooltip:
+					"API key for the OpenAI-compatible endpoint. Stored encrypted. Only needed for non-Bedrock providers.",
 			},
 			{
 				key: "insights.batch_enabled",

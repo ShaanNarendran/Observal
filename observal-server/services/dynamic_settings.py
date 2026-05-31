@@ -167,6 +167,9 @@ DEFAULTS: dict[str, str] = {
     "insights.model_sections": "",
     "insights.model_synthesis": "",
     "insights.model_facets": "",
+    # Insights: OpenAI-compatible provider config (non-Bedrock)
+    "insights.model_url": "",
+    "insights.model_api_key": "",
     # Insights: batch processing
     "insights.batch_enabled": "true",
     "insights.batch_period_days": "14",
@@ -230,6 +233,7 @@ SENSITIVE_KEYS: set[str] = {
     "insights.aws_access_key_id",
     "insights.aws_secret_access_key",
     "insights.aws_session_token",
+    "insights.model_api_key",
     "saml.idp_x509_cert",
     "saml.sp_key_encryption_password",
 }
