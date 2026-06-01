@@ -24,6 +24,7 @@ support for a new IDE:
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from .base import strip_cursor_xml_tags
@@ -469,6 +470,96 @@ def _tool_info_pi(parsed: dict) -> tuple[str | None, str | None]:
 
 
 # ---------------------------------------------------------------------------
+# Antigravity CLI
+# ---------------------------------------------------------------------------
+
+_ANTIGRAVITY_SKIP_TYPES = {"CONVERSATION_HISTORY", "SYSTEM_PROMPT"}
+
+_ANTIGRAVITY_USER_REQUEST_RE = re.compile(r"<USER_REQUEST>\s*(.*?)\s*</USER_REQUEST>", re.DOTALL)
+
+
+def _classify_antigravity(parsed: dict) -> str | None:
+    """Classify one Antigravity transcript JSONL line.
+
+    Format:
+      source: USER_EXPLICIT | MODEL | SYSTEM
+      type: USER_INPUT | PLANNER_RESPONSE | LIST_DIRECTORY | ...
+      tool_calls: [{name, args}]  (on PLANNER_RESPONSE when tools are invoked)
+    """
+    source = parsed.get("source", "")
+    line_type = parsed.get("type", "")
+
+    if line_type in _ANTIGRAVITY_SKIP_TYPES:
+        return None
+
+    if source == "USER_EXPLICIT" and line_type == "USER_INPUT":
+        return "user_prompt"
+
+    if source == "MODEL" and line_type == "PLANNER_RESPONSE":
+        tool_calls = parsed.get("tool_calls", [])
+        if tool_calls:
+            return "tool_call"
+        return "assistant_text"
+
+    # Tool results: source=MODEL, type is the tool name (e.g. LIST_DIRECTORY)
+    if source == "MODEL" and line_type not in ("PLANNER_RESPONSE", "USER_INPUT"):
+        return "tool_result"
+
+    if source == "SYSTEM":
+        return "system"
+
+    return None
+
+
+def _preview_antigravity(parsed: dict, event_type: str) -> str:
+    """Extract preview text from an Antigravity transcript line."""
+    try:
+        content = parsed.get("content", "")
+        if not content:
+            return ""
+
+        if event_type == "user_prompt":
+            m = _ANTIGRAVITY_USER_REQUEST_RE.search(content)
+            if m:
+                return m.group(1).strip()[:_PREVIEW_MAX]
+            return content[:_PREVIEW_MAX]
+
+        if event_type == "assistant_text":
+            return content[:_PREVIEW_MAX]
+
+        if event_type == "tool_call":
+            tool_calls = parsed.get("tool_calls", [])
+            if tool_calls:
+                names = [tc.get("name", "") for tc in tool_calls]
+                return f"{content[:200]} [tools: {', '.join(names)}]"[:_PREVIEW_MAX]
+            return content[:_PREVIEW_MAX]
+
+        if event_type == "tool_result":
+            line_type = parsed.get("type", "")
+            return f"[{line_type}] {content[:200]}"[:_PREVIEW_MAX]
+
+    except Exception:
+        pass
+    return ""
+
+
+def _tool_info_antigravity(parsed: dict) -> tuple[str | None, str | None]:
+    """Extract (tool_name, tool_id) from an Antigravity transcript line."""
+    tool_calls = parsed.get("tool_calls", [])
+    if tool_calls:
+        first = tool_calls[0]
+        return first.get("name"), None
+
+    # Tool result rows use the type field as the tool name
+    source = parsed.get("source", "")
+    line_type = parsed.get("type", "")
+    if source == "MODEL" and line_type not in ("PLANNER_RESPONSE", "USER_INPUT"):
+        return line_type.lower(), None
+
+    return None, None
+
+
+# ---------------------------------------------------------------------------
 # Registry  -- add new parsers here, update ide_registry.py session_parser key
 # ---------------------------------------------------------------------------
 
@@ -483,6 +574,7 @@ _CLASSIFIERS: dict[str, _Classifier] = {
     "kiro": (_classify_kiro, _preview_kiro, _tool_info_kiro),
     "cursor": (_classify_cursor, _preview_cursor, _tool_info_cursor),
     "pi": (_classify_pi, _preview_pi, _tool_info_pi),
+    "antigravity": (_classify_antigravity, _preview_antigravity, _tool_info_antigravity),
 }
 
 
@@ -582,11 +674,26 @@ def _ts_pi(parsed: dict) -> str | None:
     return ts
 
 
+def _ts_antigravity(parsed: dict) -> str | None:
+    """Return ClickHouse timestamp string from an Antigravity transcript line.
+
+    Antigravity uses ``created_at`` in ISO format (e.g. "2026-06-02T18:09:05Z").
+    """
+    raw = parsed.get("created_at")
+    if not raw:
+        return None
+    ts = str(raw).replace("T", " ").rstrip("Z")
+    if "." not in ts:
+        ts += ".000"
+    return ts
+
+
 _TS_EXTRACTORS: dict[str, object] = {
     "claude-code": _ts_claude_code,
     "kiro": _ts_kiro,
     "cursor": _ts_cursor,
     "pi": _ts_pi,
+    "antigravity": _ts_antigravity,
 }
 
 
@@ -625,6 +732,7 @@ _EXTRA_ROWS_HANDLERS: dict[str, _ExtraRowsFn] = {
     "claude-code": _no_extra_rows,
     "cursor": _no_extra_rows,
     "pi": _no_extra_rows,
+    "antigravity": _no_extra_rows,
 }
 
 

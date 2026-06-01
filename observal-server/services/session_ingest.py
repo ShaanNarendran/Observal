@@ -55,6 +55,17 @@ def _usage_pi(parsed: dict) -> dict:
     }
 
 
+def _usage_antigravity(parsed: dict) -> dict:
+    """Antigravity: no token counts in transcript format."""
+    return {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0,
+        "model": "",
+    }
+
+
 _UsageFn = Callable[[dict], dict]
 
 _USAGE_EXTRACTORS: dict[str, _UsageFn] = {
@@ -62,6 +73,7 @@ _USAGE_EXTRACTORS: dict[str, _UsageFn] = {
     "kiro": _usage_claude_code,
     "cursor": _usage_claude_code,
     "pi": _usage_pi,
+    "antigravity": _usage_antigravity,
 }
 
 
@@ -80,6 +92,14 @@ def _uuid_pi(parsed: dict) -> tuple[str | None, str | None]:
     return parsed.get("id"), parsed.get("parentId")
 
 
+def _uuid_antigravity(parsed: dict) -> tuple[str | None, str | None]:
+    """Antigravity: use step_index as a pseudo-UUID (no native UUIDs)."""
+    step = parsed.get("step_index")
+    if step is not None:
+        return str(step), None
+    return None, None
+
+
 _UuidFn = Callable[[dict], "tuple[str | None, str | None]"]
 
 _UUID_EXTRACTORS: dict[str, _UuidFn] = {
@@ -87,6 +107,7 @@ _UUID_EXTRACTORS: dict[str, _UuidFn] = {
     "kiro": _uuid_default,
     "cursor": _uuid_default,
     "pi": _uuid_pi,
+    "antigravity": _uuid_antigravity,
 }
 
 

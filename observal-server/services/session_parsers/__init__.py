@@ -23,6 +23,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from .antigravity import parse_rows as _parse_antigravity
 from .claude_code import parse_rows as _parse_claude_code
 from .cursor import parse_rows as _parse_cursor
 from .kiro import parse_rows as _parse_kiro
@@ -36,6 +37,7 @@ _PARSERS: dict[str, _ParseFn] = {
     "cursor": _parse_cursor,
     "kiro": _parse_kiro,
     "pi": _parse_pi,
+    "antigravity": _parse_antigravity,
 }
 
 
