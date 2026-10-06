@@ -344,6 +344,7 @@ async def generate_insight(
     report = InsightReport(
         agent_id=agent.id,
         triggered_by=current_user.id,
+        discovery_optimization_requested=bool(req and req.include_discovery_optimization),
         status=InsightReportStatus.pending,
         period_start=period_start,
         period_end=now,
@@ -461,6 +462,7 @@ async def generate_component_insight(
         component_version=version_label,
         component_name=ref.qualified_name,
         coverage=coverage,
+        discovery_optimization_requested=request.include_discovery_optimization,
         triggered_by=current_user.id,
         status=InsightReportStatus.pending,
         period_start=start,

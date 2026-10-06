@@ -194,6 +194,20 @@ async def _authorize_component_report_job(db, report: InsightReport) -> None:
         raise ValueError("Component report subject has changed")
 
 
+async def _add_discovery_optimization(db, report: InsightReport, content: dict) -> None:
+    """Optional model enrichment must not turn a valid usage report into a failure."""
+    if not report.discovery_optimization_requested:
+        return
+    try:
+        from .discovery_optimization import generate_discovery_optimization
+
+        report.discovery_optimization = await generate_discovery_optimization(db, report, content)
+    except Exception as exc:
+        # Exceptions from a provider or listing may contain private text; log the type only.
+        logger.warning("discovery_optimization_failed", error_type=type(exc).__name__)
+        report.discovery_optimization = {"status": "unavailable", "reason": "generation_failed"}
+
+
 async def run_single_report(report_id: str) -> None:
     """Generate an insight report: load from DB, run pipeline, save results.
 
@@ -225,6 +239,7 @@ async def run_single_report(report_id: str) -> None:
 
                 await _authorize_component_report_job(db, report)
                 content = await generate_component_content(report)
+                await _add_discovery_optimization(db, report, content)
                 await _update_report_progress(db, report, "saving", 9, 9, "Saving component report")
                 report.metrics = content["metrics"]
                 report.narrative = content["narrative"]
@@ -285,6 +300,7 @@ async def run_single_report(report_id: str) -> None:
                 scope=InsightScope(subject_type="agent", agent_id=str(report.agent_id)),
             )
 
+            await _add_discovery_optimization(db, report, content)
             await _update_report_progress(db, report, "saving", 9, 9, "Saving report")
 
             # Persist results

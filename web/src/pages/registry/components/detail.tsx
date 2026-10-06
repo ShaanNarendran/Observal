@@ -143,6 +143,7 @@ export default function ComponentDetailPage({
   const { data: reportPages, isLoading: reportsLoading, isError: reportsError, hasNextPage, fetchNextPage, isFetchingNextPage } = useComponentInsightReports(insightType ?? "mcp", id, showInsights);
   const componentReports = reportPages?.pages.flat() ?? [];
   const generateComponentInsight = useGenerateComponentInsight();
+  const [includeDiscoveryOptimization, setIncludeDiscoveryOptimization] = useState(false);
   const isAdmin = isAuthenticated && hasMinRole(getUserRole(), "admin");
   const owningTeam = item?.team_id ? teams.find((team) => team.id === String(item.team_id)) : undefined;
   const personalTeam = teams.find((team) => team.is_personal && team.visibility === "private");
@@ -429,10 +430,15 @@ export default function ComponentDetailPage({
                         : "Observed MCP calls and attribution coverage across verified present sessions. Partial activity never proves no use."}</p>
                   </div>
                   <Button type="button" disabled={generateComponentInsight.isPending || (!!selectedVersion && !selectedInsightVersion)}
-                    onClick={() => insightType && generateComponentInsight.mutate({ type: insightType, id, versionId: selectedInsightVersion?.id })}>
+                    onClick={() => insightType && generateComponentInsight.mutate({ type: insightType, id, versionId: selectedInsightVersion?.id, includeDiscoveryOptimization })}>
                     {generateComponentInsight.isPending ? "Queueing…" : selectedVersion ? `Generate v${selectedVersion} report` : "Generate all-versions report"}
                   </Button>
                 </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={includeDiscoveryOptimization}
+                    onChange={(event) => setIncludeDiscoveryOptimization(event.target.checked)} />
+                  Include ARD discovery suggestions (uses the configured Insights model)
+                </label>
                 {reportsLoading ? <p role="status" className="text-sm text-muted-foreground">Loading reports…</p> :
                  reportsError ? <ErrorState message="Could not load component reports" /> :
                  !componentReports?.length ? <p className="text-sm text-muted-foreground">No reports yet. Generate one to see observed activity and its coverage.</p> :

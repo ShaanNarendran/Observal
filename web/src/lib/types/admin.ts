@@ -240,6 +240,26 @@ export interface HookInsightCoverage {
 	limitations: string[];
 }
 
+export interface DiscoveryOptimization {
+	status: "generated" | "unavailable";
+	reason?: string;
+	kind?: string;
+	version?: string;
+	metadata_version_scope?: "selected" | "current_listing";
+	session_signals?: Record<string, number>;
+	score_note?: string;
+	suggestions?: {
+		field: "description";
+		illustrative_query: string;
+		suggested_description: string;
+		rationale: string;
+		evidence_keys: string[];
+		listing_evidence_keys: string[];
+		relevance_before: number;
+		relevance_after: number;
+	}[];
+}
+
 export interface InsightReportListItem {
 	id: string;
 	agent_id: string | null;
@@ -440,6 +460,8 @@ export interface InsightReport {
 	period_end: string;
 	metrics: InsightMetrics | null;
 	narrative: InsightNarrative | null;
+	discovery_optimization_requested?: boolean;
+	discovery_optimization?: DiscoveryOptimization | null;
 	facets_summary: Record<string, unknown> | null;
 	sessions_analyzed: number;
 	llm_model_used: string | null;

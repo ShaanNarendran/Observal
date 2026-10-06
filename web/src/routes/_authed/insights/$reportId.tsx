@@ -1,4 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Hari Srinivasan <harisrini21@gmail.com>
+// SPDX-FileCopyrightText: 2026 Shaan Narendran <shaannaren06@gmail.com>
 // SPDX-License-Identifier: Apache-2.0
 
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
@@ -18,6 +19,7 @@ import type {
 } from "@/lib/types";
 import { ErrorState } from "@/components/shared/error-state";
 import { useLegacyInsightReport } from "@/hooks/use-insights-api";
+import { DiscoveryOptimizationSection } from "@/components/insights/discovery-optimization";
 
 function ReportHeader({ report }: { report: InsightReport }) {
   return (
@@ -85,6 +87,7 @@ function SkillReport({ report }: { report: InsightReport }) {
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <ReportHeader report={report} />
       <ReportStatus report={report}>
+        <DiscoveryOptimizationSection requested={report.discovery_optimization_requested} result={report.discovery_optimization} />
         <section aria-label="Evidence" className="space-y-4 border-b border-border pb-6">
           <h2 className="text-lg font-semibold">What the data shows</h2>
           <p className="max-w-[70ch] text-sm leading-relaxed">{narrative?.summary}</p>
@@ -131,6 +134,7 @@ function HookReport({ report }: { report: InsightReport }) {
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <ReportHeader report={report} />
       <ReportStatus report={report}>
+        <DiscoveryOptimizationSection requested={report.discovery_optimization_requested} result={report.discovery_optimization} />
         <section aria-label="Evidence" className="space-y-4 border-b border-border pb-6">
           <h2 className="text-lg font-semibold">What the data shows</h2>
           <p className="max-w-[70ch] text-sm leading-relaxed">{narrative?.summary}</p>
@@ -175,6 +179,7 @@ function ComponentReport({ report }: { report: InsightReport }) {
     <main className="mx-auto max-w-4xl space-y-8 px-4 py-8 sm:px-6">
       <ReportHeader report={report} />
       <ReportStatus report={report}>
+          <DiscoveryOptimizationSection requested={report.discovery_optimization_requested} result={report.discovery_optimization} />
           <section aria-label="Interpretive insights" className="space-y-4 border-b border-border pb-7">
             <h2 className="text-lg font-semibold">What the published calls suggest</h2>
             {!analysis ? (
