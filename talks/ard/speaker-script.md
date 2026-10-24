@@ -3,7 +3,7 @@
 
 # Agentic Resource Discovery: speaker script
 
-About 21 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
+About 22 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
 
 ## 1. Title · 0:30
 
@@ -153,7 +153,19 @@ Every resource got one permanent URN. [Chips] Two details here. I used the inter
 
 [Table] Four endpoints come from the spec: the manifest, which only lists public entries if an admin opts in, search, list, and explore, which honestly returns 501 until facets ship. Two are mine: fetching one full entry by URN, because the spec has no operation for that, and permanent artifact URLs that always return the exact same bytes for a version, with a digest.
 
-## 16. Guardrails · 1:00
+## 16. How ranking works · 1:15
+
+Search results come back ranked, and every score can be explained. Here's one real example from the project's test benchmark.
+
+[Query] Someone asks: review a pull request for authentication vulnerabilities. Filler words like "a" and "for" are dropped, which leaves five words.
+
+[Table] For each word, the ranker looks for its best match in four places, each with a weight: the name counts most, then the example queries the publisher wrote, then capabilities and tags, then the description. An exact match scores 1, a word that starts the same way scores 0.7, and one that only appears inside a longer word scores 0.4. "Review" matches the name exactly, so it gets a full point. The other four match the example queries exactly, so 0.85 each. The average, 0.88, is the relevance.
+
+[Right] The score blends three things: 70% relevance; 20% coverage, meaning how many of your words matched at all, here all five; and 10% if your exact phrase appears, which it doesn't here. That gives 82. Next come a PR reviewer agent at 48 and a pull-request-description prompt at 36.
+
+Two more details. Before any of this, Postgres narrows the candidates to at most five thousand, using the visibility rules and a fast text index, so the scoring stays cheap. And ties go to approved resources first. The words that matched come back with each result, so the agent can explain why it picked something. Because it matches words, not meaning, synonyms like "PRs" versus "pull requests" can miss; that's where semantic search would come in next.
+
+## 17. Guardrails · 1:00
 
 Discovery could easily become a back door around a registry's rules, so I built in four guardrails.
 
@@ -165,7 +177,7 @@ Discovery could easily become a back door around a registry's rules, so I built 
 
 [Bottom right] Read freely, write with consent. Approved text loads straight away; anything that changes your setup asks first.
 
-## 17. Agents search before they reinvent · 1:00
+## 18. Agents search before they reinvent · 1:00
 
 So what does this unlock? The first use case is the one that started all of this: agents search before they reinvent.
 
@@ -173,7 +185,7 @@ So what does this unlock? The first use case is the one that started all of this
 
 [Note] The output here is simplified and the resource names are examples. An empty result is a valid answer: the agent retries once with different words, then gets on with the job.
 
-## 18. Text loads now; setup changes ask first · 0:45
+## 19. Text loads now; setup changes ask first · 0:45
 
 What happens on "use" depends on what the resource touches. This is where Observal's governance does the work ARD leaves out.
 
@@ -181,7 +193,7 @@ What happens on "use" depends on what the resource touches. This is where Observ
 
 [Bottom] And unapproved resources, or ones your harness doesn't support, are refused unless you explicitly override.
 
-## 19. Every use is recorded · 1:00
+## 20. Every use is recorded · 1:00
 
 Because every use goes through one place, we know what a session actually relied on.
 
@@ -189,7 +201,7 @@ Because every use goes through one place, we know what a session actually relied
 
 [Command] Then the loop closes. If a combination worked, say a security skill, a checklist and the GitHub MCP server, this command turns it into a draft agent pinned to those exact versions. Ad-hoc discovery becomes a reviewed, reusable asset for the next person.
 
-## 20. Findable everywhere · 1:00
+## 21. Findable everywhere · 1:00
 
 Zooming out from Observal, here's what ARD enables for everyone.
 
@@ -201,7 +213,7 @@ Zooming out from Observal, here's what ARD enables for everyone.
 
 [Card 4] And governed catalogues like the one I built can add approval and telemetry on top while still speaking the open standard. Open ecosystems, not walled catalogues.
 
-## 21. Try it this week · 1:00
+## 22. Try it this week · 1:00
 
 If you take one thing home: you can publish an ARD entry for your own project this week. It's one small file.
 
@@ -211,7 +223,7 @@ If you take one thing home: you can publish an ARD entry for your own project th
 
 [Bottom right] Step three: join in. The spec is at version 0.91, so feedback now actually shapes it. Issues for spec changes; pull requests welcome for examples, tools and implementations.
 
-## 22. Thank you · Q&A
+## 23. Thank you · Q&A
 
 To wrap up: agents shouldn't be limited to what someone wired up in advance. ARD gives them a search layer: a small entry, a permanent domain-anchored name, one REST API, federation across registries, and trust kept separate from relevance. And I've shown you what it took to build that into a real open-source registry.
 
