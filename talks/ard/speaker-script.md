@@ -185,7 +185,7 @@ Discovery could easily become a back door around a registry's rules, so I built 
 
 [Top left] Score means relevance only, as the spec says. Approval and harness support are separate fields, and policy filters run before ranking.
 
-[Top right] Discovery never shows more than the registry already would. Drafts and rejected items only reach their owners.
+[Top right] Discovery is scoped to you. A signed-in user only discovers their own listings and the teamspaces they belong to, not everyone else's public listings, and drafts only reach their owners. My first version mirrored the registry's browse rules; I tightened it in a follow-up because search is a much stronger way to surface things than browsing. Anonymous search is off unless an admin turns it on.
 
 [Bottom left] Search text stays home. People type sensitive things into search, such as incident details or unreleased product names, so federation only reaches upstreams an admin allowlists, and that list starts empty.
 
