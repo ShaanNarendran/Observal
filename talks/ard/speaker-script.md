@@ -33,9 +33,9 @@ The capability was there. It just wasn't findable.
 
 The obvious fix is to connect everything. That breaks fast.
 
-[Left side] Most agents pick tools by putting every tool's description into the context window, on every turn. With five tools that's fine. With five thousand, the descriptions crowd out your actual task, burn tokens, and the model chooses worse.
+[Left box] This box is the model's context window. The orange row is your task: book a flight to Tokyo. Every purple row is a tool description: GitHub, Slack, Jira, Postgres, and thousands more. Most agents put every connected tool's description in here, on every turn. With five tools that's fine. With five thousand, the window is full before your task gets a look in: it burns tokens, slows things down, and the model chooses worse.
 
-[Right side] ARD's answer is to move selection out of the model. A search service indexes thousands of resources, and the agent loads only the few that match this task. Plenty of room left in the context.
+[Right side] ARD moves the choosing out of the model. Your task goes to a search service that indexes thousands of resources, and only the top three matches come back into the context: a travel agent, a flight-status server, a trip-planning skill. [Point to the dashed box] Everything else stays free for the actual work.
 
 It's the same shift the web went through, which brings me to this quote.
 
