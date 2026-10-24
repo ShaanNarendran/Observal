@@ -3,7 +3,7 @@
 
 # Agentic Resource Discovery: speaker script
 
-About 25 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
+About 21 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
 
 ## 1. Title · 0:30
 
@@ -17,7 +17,7 @@ The interesting part is that the agent had none of these installed beforehand. I
 
 A quick intro: I'm an open-source contributor, and over the last couple of months I implemented ARD in Observal, an open-source registry and observability platform for AI coding agents. So this talk is half spec, half field notes.
 
-Five parts: why agents need discovery at all, what ARD actually specifies, how I implemented it and what I learned, what it unlocks, and how you can try it on your own project this week.
+Five parts: why agents need discovery at all, what ARD actually specifies, how I implemented it, what it unlocks, and how you can try it on your own project this week.
 
 ## 3. Agents only use what someone wired up in advance · 1:00
 
@@ -37,15 +37,9 @@ The obvious fix is to connect everything. That breaks fast.
 
 [Right side] ARD moves the choosing out of the model. Your task goes to a search service that indexes thousands of resources, and only the top three matches come back into the context: a travel agent, a flight-status server, a trip-planning skill. [Point to the dashed box] Everything else stays free for the actual work.
 
-It's the same shift the web went through, which brings me to this quote.
+It's the same shift the web went through, from hand-curated directories to search engines. ARD is that search layer for agents.
 
-## 5. "Search engines lit the web up." · 0:30
-
-That's R.V. Guha, introducing ARD in June. Guha helped create RSS and schema.org, so he's seen this pattern before.
-
-Early on, the web lived in hand-curated directories, and search engines made it usable. Agentic resources are in that directory era right now: curated lists, marketplaces, config files. ARD is a search layer for them.
-
-## 6. ARD is an open spec · 1:00
+## 5. ARD is an open spec · 1:00
 
 So what is ARD, concretely? It's an open specification, announced on 17 June this year. The current version is 0.91, still marked as a Proposal, and it's Apache-licensed.
 
@@ -55,7 +49,7 @@ It's not just a document. There are already two reference implementations: GitHu
 
 And it's open on GitHub. Spec changes start as issues, so anyone in this room can take part.
 
-## 7. ARD runs before invocation · 1:00
+## 6. ARD runs before invocation · 1:00
 
 Where does ARD fit? Before invocation.
 
@@ -65,7 +59,7 @@ So ARD doesn't replace MCP, A2A or Skills. It's an envelope around them. [Right]
 
 For this community, a simple way to put it: MCP is how agents talk to tools; ARD is how they find them.
 
-## 8. One small JSON-LD entry · 1:15
+## 7. One small JSON-LD entry · 1:15
 
 The basic unit is the entry: one small JSON-LD document per resource. This one comes straight from the spec, a weather MCP server.
 
@@ -75,7 +69,7 @@ The basic unit is the entry: one small JSON-LD document per resource. This one c
 
 [Grey keys] Everything else is optional. And because it's JSON-LD, you can add your own vocabulary through @context, and those terms become filters without anyone changing the spec.
 
-## 9. The identifier names the resource · 1:15
+## 8. The identifier names the resource · 1:15
 
 Every entry has an identifier that starts with urn:air.
 
@@ -89,19 +83,9 @@ Why not just use the URL as the ID? Because a URL answers "where is it right now
 
 [Card 3] Unique without a referee. When registries merge results, two publishers will both call something "weather". Instead of a central body handing out names, ARD reuses DNS: only one organisation owns acme.com, so everything under urn:air:acme.com is theirs. If you've written Java, it's the same trick as com.acme package names.
 
-## 10. Five ways to publish · 1:00
+## 9. Registries and one REST search API · 1:00
 
-How do registries find your entry? There's a static layer that works a lot like publishing web pages.
-
-There are five mechanisms. [Top two rows] These two are the ones consumers must check: a manifest at /.well-known/ard.json, which is just JSON with an entries array, and a link tag with rel="ard" in your HTML.
-
-[Other rows] You can also embed the entry as JSON-LD on the resource's own page, add an Agentmap line to robots.txt, or publish DNS records that point at your entries or at a search endpoint.
-
-One tip: older articles mention ai-catalog.json. That's the predecessor. Publish ard.json.
-
-## 11. Registries and one REST search API · 1:00
-
-The dynamic layer is registries.
+So how does anyone find these entries? A publisher puts them in a small file at /.well-known/ard.json on their own domain, a bit like a sitemap for a website. Registries are the search engines that crawl those files.
 
 [Top flow] Publishers put entries out. Registries ingest them: web crawling is required, and scanning git, npm or OCI is optional. They build an index, and clients query it.
 
@@ -109,7 +93,7 @@ The dynamic layer is registries.
 
 [Code] A request is simple: some text, optional filters (here, only A2A agents), a federation mode and a page size. Federation is next.
 
-## 12. Federation: three modes · 1:00
+## 10. Federation: three modes · 1:00
 
 With many registries around, a natural question is: does my search only see one of them? Federation answers that. A registry is itself an ARD entry, so registries can find each other like any other resource. And because they all speak the same search API, one registry can simply ask another over HTTP.
 
@@ -117,7 +101,7 @@ The client chooses how far a search goes, with one field in the request. [Card 1
 
 [Bottom] If you know DNS: auto is like a resolver that does the whole lookup for you; referrals is a server saying "I don't know, but ask them."
 
-## 13. Federation, step by step · 1:15
+## 11. Federation, step by step · 1:15
 
 Here's the spec's own example. Read it top to bottom. [Top] The user asks: book me a flight to Tokyo and file the travel expense report.
 
@@ -131,7 +115,7 @@ Here's the spec's own example. Read it top to bottom. [Top] The user asks: book 
 
 [Step 5] Now the orchestrator has both agents and calls each one through its own protocol. ARD's job ended at step 4: it finds things; it doesn't run them.
 
-## 14. Relevance and trust are kept apart · 1:00
+## 12. Relevance and trust are kept apart · 1:00
 
 One design choice I really like is that relevance and trust are kept apart.
 
@@ -143,7 +127,7 @@ Why it matters: a top-ranked result should never look trustworthy just because i
 
 That's the spec. Now let me show you what it took to implement it.
 
-## 15. Observal had a registry · 1:00
+## 13. Observal had a registry · 1:00
 
 Observal is an open-source registry and observability platform for AI coding agents. An agent there bundles MCP servers, skills, hooks, prompts and sandboxes. The model was install-first: build an agent, get it approved, pull it into Claude Code or Cursor or Kiro, then start working.
 
@@ -151,9 +135,7 @@ Observal is an open-source registry and observability platform for AI coding age
 
 ARD fit cleanly because it deliberately doesn't do installation, review or telemetry, and Observal already had all three. [Card] So the principle I wrote into the project's first ADR was: ARD says what exists; Observal says how to use it safely.
 
-[Numbers] The pull request came to 23 commits and 90 files, about ten thousand lines, more than four thousand of them tests.
-
-## 16. A projection, not a rewrite · 1:00
+## 14. A projection, not a rewrite · 1:00
 
 The most important decision was that I didn't touch the existing tables.
 
@@ -165,21 +147,13 @@ The most important decision was that I didn't touch the existing tables.
 
 Keeping it fresh is one idempotent function, triggered after every change, by a safety-net job four times a day, and on first boot. No existing API changed.
 
-## 17. Six endpoints · 0:45
+## 15. Six endpoints · 0:45
 
 Every resource got one permanent URN. [Chips] Two details here. I used the internal UUID, not the readable name, because names change on rename or transfer and a URN mustn't. And the publisher domain is pinned once, so identifiers don't change if the deployment moves.
 
-[Table] Four endpoints come from the spec: the manifest, search, list, and explore, which honestly returns 501 until facets ship. Two are mine: fetching one full entry by URN, because the spec has no operation for that, and permanent artifact URLs that always return the exact same bytes for a version, with a digest.
+[Table] Four endpoints come from the spec: the manifest, which only lists public entries if an admin opts in, search, list, and explore, which honestly returns 501 until facets ship. Two are mine: fetching one full entry by URN, because the spec has no operation for that, and permanent artifact URLs that always return the exact same bytes for a version, with a digest.
 
-## 18. Postgres narrows, Python ranks, CI checks · 1:00
-
-For search, I avoided new infrastructure. [Step 1] Postgres narrows: visibility rules, filters and a trigram-indexed text match, giving at most five thousand candidates. [Step 2] Python ranks: each query word is scored against the name, the representative queries, the capabilities and the description, in that order of weight. [Step 3] And every result explains itself with the words that matched.
-
-[Chart] I didn't want to guess whether that's good enough, so there's a benchmark in CI: 47 requests written the way developers actually ask. Recall at 5 is 0.96 for the ranker and 0.94 end to end. The grey bars are floors: drop below them and the build fails, and the rule is that floors only go up.
-
-The misses are synonyms, like "PRs" versus "pull requests". That's where semantic search would come in next.
-
-## 19. Guardrails · 1:00
+## 16. Guardrails · 1:00
 
 Discovery could easily become a back door around a registry's rules, so I built in four guardrails.
 
@@ -191,21 +165,7 @@ Discovery could easily become a back door around a registry's rules, so I built 
 
 [Bottom right] Read freely, write with consent. Approved text loads straight away; anything that changes your setup asks first.
 
-## 20. What I learned · 1:15
-
-Five lessons from implementing a spec that was still moving.
-
-One: pin it. I vendored the schemas and the official conformance tool at one commit and run them in CI, so updating the spec is a reviewed change, not a surprise.
-
-Two: write decisions down. An ADR with ten decisions meant reviewers debated choices, not code.
-
-Three: project, don't rewrite. Nothing existing broke.
-
-Four: the spec changed while I was building. The well-known path, the URN prefix and the MCP media type all got new names. So accept the old spellings on input and always emit the new ones.
-
-Five: be honest about conformance. The spec says registries must crawl, and I haven't built crawling yet, so Observal is a publisher and search endpoint, not a full registry, and the docs say so.
-
-## 21. Agents search before they reinvent · 1:00
+## 17. Agents search before they reinvent · 1:00
 
 So what does this unlock? The first use case is the one that started all of this: agents search before they reinvent.
 
@@ -213,7 +173,7 @@ So what does this unlock? The first use case is the one that started all of this
 
 [Note] The output here is simplified and the resource names are examples. An empty result is a valid answer: the agent retries once with different words, then gets on with the job.
 
-## 22. Text loads now; setup changes ask first · 0:45
+## 18. Text loads now; setup changes ask first · 0:45
 
 What happens on "use" depends on what the resource touches. This is where Observal's governance does the work ARD leaves out.
 
@@ -221,7 +181,7 @@ What happens on "use" depends on what the resource touches. This is where Observ
 
 [Bottom] And unapproved resources, or ones your harness doesn't support, are refused unless you explicitly override.
 
-## 23. Every use is recorded · 1:00
+## 19. Every use is recorded · 1:00
 
 Because every use goes through one place, we know what a session actually relied on.
 
@@ -229,7 +189,7 @@ Because every use goes through one place, we know what a session actually relied
 
 [Command] Then the loop closes. If a combination worked, say a security skill, a checklist and the GitHub MCP server, this command turns it into a draft agent pinned to those exact versions. Ad-hoc discovery becomes a reviewed, reusable asset for the next person.
 
-## 24. Findable everywhere · 1:00
+## 20. Findable everywhere · 1:00
 
 Zooming out from Observal, here's what ARD enables for everyone.
 
@@ -241,7 +201,7 @@ Zooming out from Observal, here's what ARD enables for everyone.
 
 [Card 4] And governed catalogues like the one I built can add approval and telemetry on top while still speaking the open standard. Open ecosystems, not walled catalogues.
 
-## 25. Try it this week · 1:00
+## 21. Try it this week · 1:00
 
 If you take one thing home: you can publish an ARD entry for your own project this week. It's one small file.
 
@@ -251,7 +211,7 @@ If you take one thing home: you can publish an ARD entry for your own project th
 
 [Bottom right] Step three: join in. The spec is at version 0.91, so feedback now actually shapes it. Issues for spec changes; pull requests welcome for examples, tools and implementations.
 
-## 26. Thank you · Q&A
+## 22. Thank you · Q&A
 
 To wrap up: agents shouldn't be limited to what someone wired up in advance. ARD gives them a search layer: a small entry, a permanent domain-anchored name, one REST API, federation across registries, and trust kept separate from relevance. And I've shown you what it took to build that into a real open-source registry.
 
