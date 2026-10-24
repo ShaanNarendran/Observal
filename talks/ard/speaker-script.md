@@ -81,7 +81,13 @@ Every entry has an identifier that starts with urn:air.
 
 [Walk the chips left to right] "urn" says this is a name, not an address. "air" is ARD's namespace. Early drafts used urn:ai, but URN rules need more than two characters, so it became air. Then comes the publisher, which must be a real domain, an optional namespace, and the resource name.
 
-Why not just use the URL? Three reasons. [Cards] Stable: hosting moves, the name doesn't. Verifiable: the publisher domain has to match the identity in the entry's trust manifest, so nobody can publish urn:air:google.com-anything without proof from google.com. And globally unique for free: DNS already makes domains unique, so catalogues from different registries merge without collisions, and nobody has to run a naming committee.
+Why not just use the URL as the ID? Because a URL answers "where is it right now?", and an identifier needs to answer "what is it, and who stands behind it?" Three reasons.
+
+[Card 1] Stable. Think of a person's name versus their home address. If Acme moves its weather server to a new host, a URL-based ID would break every registry and every saved config. With a URN, the name stays the same and only the url field changes.
+
+[Card 2] Verifiable. Anyone can publish a JSON file claiming to be Google's official Gmail agent. ARD ties the name to a domain: an entry named urn:air:google.com-anything must carry proof issued by google.com in its trust manifest. Same idea as HTTPS: you only get a certificate for google.com if you control google.com. No proof, and a registry that checks rejects it.
+
+[Card 3] Unique without a referee. When registries merge results, two publishers will both call something "weather". Instead of a central body handing out names, ARD reuses DNS: only one organisation owns acme.com, so everything under urn:air:acme.com is theirs. If you've written Java, it's the same trick as com.acme package names.
 
 ## 10. Five ways to publish · 1:00
 
