@@ -3,7 +3,7 @@
 
 # Agentic Resource Discovery: speaker script
 
-About 22 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
+About 23 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
 
 ## 1. Title · 0:30
 
@@ -17,7 +17,7 @@ The interesting part is that the agent had none of these installed beforehand. I
 
 A quick intro: I'm an open-source contributor, and over the last couple of months I implemented ARD in Observal, an open-source registry and observability platform for AI coding agents. So this talk is half spec, half field notes.
 
-Five parts: why agents need discovery at all, what ARD actually specifies, how I implemented it, what it unlocks, and how you can try it on your own project this week.
+Five parts: why agents need discovery at all, what ARD actually specifies, how I implemented it, what it unlocks, and what I'm building next, plus how you can try it on your own project this week.
 
 ## 3. Agents only use what someone wired up in advance · 1:00
 
@@ -213,7 +213,19 @@ Zooming out from Observal, here's what ARD enables for everyone.
 
 [Card 4] And governed catalogues like the one I built can add approval and telemetry on top while still speaking the open standard. Open ecosystems, not walled catalogues.
 
-## 22. Try it this week · 1:00
+## 22. Next: ARD SEO · 1:00
+
+That's what exists today. Here's what I'm building next, which I'm calling ARD SEO. If ranking decides whether people find your component, authors deserve to know how to rank well.
+
+[Left card] This is a mock-up of the author's view for one component. First, a discovery checklist against the signals the ranker actually uses: is it approved, does it have enough example queries (the spec says two to five), and has it declared which harnesses it supports? Undeclared harnesses matter more than you'd think: when someone filters by harness, resources that don't declare one are left out.
+
+[Near miss] Then near misses, and this one is real, from the project's own search benchmark. Someone searches "find an auth bypass in the payments PR". Our Security Review skill comes third with 21, behind two unrelated skills whose names end in "Author", because "auth" is the start of "Author". The report shows the missing words: bypass, payments. Add one example query using them, and the same search ranks it first with 80.
+
+[Right] So authors will get four things: a health check, near misses, a word-by-word "why you rank there" against the result above them, and a way to test a query before publishing.
+
+[Bottom] And it stays fair. It's the same formula for everyone, the score stays relevance-only, and stuffing keywords doesn't help, because each query word only counts once. Near misses will be built from aggregated searches within the teams that can see the component, never who searched.
+
+## 23. Try it this week · 1:00
 
 If you take one thing home: you can publish an ARD entry for your own project this week. It's one small file.
 
@@ -223,7 +235,7 @@ If you take one thing home: you can publish an ARD entry for your own project th
 
 [Bottom right] Step three: join in. The spec is at version 0.91, so feedback now actually shapes it. Issues for spec changes; pull requests welcome for examples, tools and implementations.
 
-## 23. Thank you · Q&A
+## 24. Thank you · Q&A
 
 To wrap up: agents shouldn't be limited to what someone wired up in advance. ARD gives them a search layer: a small entry, a permanent domain-anchored name, one REST API, federation across registries, and trust kept separate from relevance. And I've shown you what it took to build that into a real open-source registry.
 
