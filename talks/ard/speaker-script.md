@@ -3,7 +3,7 @@
 
 # Agentic Resource Discovery: speaker script
 
-About 24 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
+About 25 minutes at a relaxed pace, plus Q&A. Cues in [brackets] tell you where to point or pause.
 
 ## 1. Title · 0:30
 
@@ -109,15 +109,29 @@ The dynamic layer is registries.
 
 [Code] A request is simple: some text, optional filters (here, only A2A agents), a federation mode and a page size. Federation is next.
 
-## 12. Federation · 1:15
+## 12. Federation: three modes · 1:00
 
-Because everyone speaks the same API, federation is just HTTP, and the client picks the mode. [Left] auto, the default, means the registry asks its upstreams and merges everything. referrals means it returns its own results plus pointers to other registries. none means local only.
+With many registries around, a natural question is: does my search only see one of them? Federation answers that. A registry is itself an ARD entry, so registries can find each other like any other resource. And because they all speak the same search API, one registry can simply ask another over HTTP.
 
-[Diagram] This is the spec's own example. Someone says: book me a flight to Tokyo and file the expense report. The orchestrator searches the company registry in referrals mode. It gets the internal expense agent with a score of 97, plus two referrals. It follows the travel referral to find the flight agent. Then it calls each one through its own protocol.
+The client chooses how far a search goes, with one field in the request. [Card 1] auto, the default: the registry asks other registries on your behalf and merges everything into one list. [Card 2] referrals: the registry gives you its own answers plus "you could also try these registries", and you decide. [Card 3] none: only this registry's own index; your query goes nowhere else.
 
-It's a bit like DNS: one lookup experience across private and public catalogues.
+[Bottom] If you know DNS: auto is like a resolver that does the whole lookup for you; referrals is a server saying "I don't know, but ask them."
 
-## 13. Relevance and trust are kept apart · 1:00
+## 13. Federation, step by step · 1:15
+
+Here's the spec's own example. Read it top to bottom. [Top] The user asks: book me a flight to Tokyo and file the travel expense report.
+
+[Step 1] The orchestrator, which is the user's agent, searches the company's internal registry in referrals mode.
+
+[Step 2] The company registry answers: here's our internal expenses agent, a strong match at 97, and here are two other registries you could try for the rest.
+
+[Step 3] The orchestrator picks the travel finder and asks it only about the flight. Notice what it doesn't send: anything about the expense report. That stays inside the company. That's the point of referrals: the agent decides where each part of its question goes.
+
+[Step 4] The travel finder returns a flight booking agent.
+
+[Step 5] Now the orchestrator has both agents and calls each one through its own protocol. ARD's job ended at step 4: it finds things; it doesn't run them.
+
+## 14. Relevance and trust are kept apart · 1:00
 
 One design choice I really like is that relevance and trust are kept apart.
 
@@ -129,7 +143,7 @@ Why it matters: a top-ranked result should never look trustworthy just because i
 
 That's the spec. Now let me show you what it took to implement it.
 
-## 14. Observal had a registry · 1:00
+## 15. Observal had a registry · 1:00
 
 Observal is an open-source registry and observability platform for AI coding agents. An agent there bundles MCP servers, skills, hooks, prompts and sandboxes. The model was install-first: build an agent, get it approved, pull it into Claude Code or Cursor or Kiro, then start working.
 
@@ -139,7 +153,7 @@ ARD fit cleanly because it deliberately doesn't do installation, review or telem
 
 [Numbers] The pull request came to 23 commits and 90 files, about ten thousand lines, more than four thousand of them tests.
 
-## 15. A projection, not a rewrite · 1:00
+## 16. A projection, not a rewrite · 1:00
 
 The most important decision was that I didn't touch the existing tables.
 
@@ -151,13 +165,13 @@ The most important decision was that I didn't touch the existing tables.
 
 Keeping it fresh is one idempotent function, triggered after every change, by a safety-net job four times a day, and on first boot. No existing API changed.
 
-## 16. Six endpoints · 0:45
+## 17. Six endpoints · 0:45
 
 Every resource got one permanent URN. [Chips] Two details here. I used the internal UUID, not the readable name, because names change on rename or transfer and a URN mustn't. And the publisher domain is pinned once, so identifiers don't change if the deployment moves.
 
 [Table] Four endpoints come from the spec: the manifest, search, list, and explore, which honestly returns 501 until facets ship. Two are mine: fetching one full entry by URN, because the spec has no operation for that, and permanent artifact URLs that always return the exact same bytes for a version, with a digest.
 
-## 17. Postgres narrows, Python ranks, CI checks · 1:00
+## 18. Postgres narrows, Python ranks, CI checks · 1:00
 
 For search, I avoided new infrastructure. [Step 1] Postgres narrows: visibility rules, filters and a trigram-indexed text match, giving at most five thousand candidates. [Step 2] Python ranks: each query word is scored against the name, the representative queries, the capabilities and the description, in that order of weight. [Step 3] And every result explains itself with the words that matched.
 
@@ -165,7 +179,7 @@ For search, I avoided new infrastructure. [Step 1] Postgres narrows: visibility 
 
 The misses are synonyms, like "PRs" versus "pull requests". That's where semantic search would come in next.
 
-## 18. Guardrails · 1:00
+## 19. Guardrails · 1:00
 
 Discovery could easily become a back door around a registry's rules, so I built in four guardrails.
 
@@ -177,7 +191,7 @@ Discovery could easily become a back door around a registry's rules, so I built 
 
 [Bottom right] Read freely, write with consent. Approved text loads straight away; anything that changes your setup asks first.
 
-## 19. What I learned · 1:15
+## 20. What I learned · 1:15
 
 Five lessons from implementing a spec that was still moving.
 
@@ -191,7 +205,7 @@ Four: the spec changed while I was building. The well-known path, the URN prefix
 
 Five: be honest about conformance. The spec says registries must crawl, and I haven't built crawling yet, so Observal is a publisher and search endpoint, not a full registry, and the docs say so.
 
-## 20. Agents search before they reinvent · 1:00
+## 21. Agents search before they reinvent · 1:00
 
 So what does this unlock? The first use case is the one that started all of this: agents search before they reinvent.
 
@@ -199,7 +213,7 @@ So what does this unlock? The first use case is the one that started all of this
 
 [Note] The output here is simplified and the resource names are examples. An empty result is a valid answer: the agent retries once with different words, then gets on with the job.
 
-## 21. Text loads now; setup changes ask first · 0:45
+## 22. Text loads now; setup changes ask first · 0:45
 
 What happens on "use" depends on what the resource touches. This is where Observal's governance does the work ARD leaves out.
 
@@ -207,7 +221,7 @@ What happens on "use" depends on what the resource touches. This is where Observ
 
 [Bottom] And unapproved resources, or ones your harness doesn't support, are refused unless you explicitly override.
 
-## 22. Every use is recorded · 1:00
+## 23. Every use is recorded · 1:00
 
 Because every use goes through one place, we know what a session actually relied on.
 
@@ -215,7 +229,7 @@ Because every use goes through one place, we know what a session actually relied
 
 [Command] Then the loop closes. If a combination worked, say a security skill, a checklist and the GitHub MCP server, this command turns it into a draft agent pinned to those exact versions. Ad-hoc discovery becomes a reviewed, reusable asset for the next person.
 
-## 23. Findable everywhere · 1:00
+## 24. Findable everywhere · 1:00
 
 Zooming out from Observal, here's what ARD enables for everyone.
 
@@ -227,7 +241,7 @@ Zooming out from Observal, here's what ARD enables for everyone.
 
 [Card 4] And governed catalogues like the one I built can add approval and telemetry on top while still speaking the open standard. Open ecosystems, not walled catalogues.
 
-## 24. Try it this week · 1:00
+## 25. Try it this week · 1:00
 
 If you take one thing home: you can publish an ARD entry for your own project this week. It's one small file.
 
@@ -237,7 +251,7 @@ If you take one thing home: you can publish an ARD entry for your own project th
 
 [Bottom right] Step three: join in. The spec is at version 0.91, so feedback now actually shapes it. Issues for spec changes; pull requests welcome for examples, tools and implementations.
 
-## 25. Thank you · Q&A
+## 26. Thank you · Q&A
 
 To wrap up: agents shouldn't be limited to what someone wired up in advance. ARD gives them a search layer: a small entry, a permanent domain-anchored name, one REST API, federation across registries, and trust kept separate from relevance. And I've shown you what it took to build that into a real open-source registry.
 
