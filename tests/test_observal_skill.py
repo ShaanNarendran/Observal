@@ -45,6 +45,7 @@ ALL_SKILL_PATHS = [
     SKILLS_DIR / "observal-agents" / "SKILL.md",
     SKILLS_DIR / "observal-registry" / "SKILL.md",
     SKILLS_DIR / "observal-ops" / "SKILL.md",
+    SKILLS_DIR / "observal-ard-seo" / "SKILL.md",
     SKILLS_DIR / "observal-admin" / "SKILL.md",
     SKILLS_DIR / "observal-advanced" / "SKILL.md",
 ]
