@@ -30,6 +30,7 @@ _SKILL_DIRS = (
     "observal-agents",
     "observal-registry",
     "observal-ops",
+    "observal-ard-seo",
     "observal-admin",
     "observal-advanced",
 )
