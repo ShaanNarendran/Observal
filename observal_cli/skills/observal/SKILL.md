@@ -6,13 +6,13 @@
 name: observal
 command: observal
 description: "Use when starting any task the organization may already have an approved skill, prompt, MCP server, or Agent for: reviewing code, a commit, a diff, or a pull request; writing tests or documentation; querying a database, API, or service; automating a browser or web page; running untrusted code; connecting to a SaaS tool; drafting, researching, or any other substantive work. The user will not mention Observal: the task type is the trigger. Check what is already installed, then run observal discover search as the first action, before reading the repository or working from scratch. Also use when the user wants to log in, configure Observal, inspect local harness setup, share or open a repository Agent share, manage a teamspace or invitation, process inbox items, check installed registry items, or call an endpoint without a dedicated command."
-version: 2.11.0
+version: 2.12.0
 owner: observal
 ---
 
 # Operating Observal
 
-Use this skill for discovery of approved resources and for core account, setup, local inventory, inbox, and teamspace work. Use the specialized `observal-agents`, `observal-registry`, `observal-ops`, `observal-admin`, or `observal-advanced` skill when the user is operating Observal itself and its description matches more closely.
+Use this skill for discovery of approved resources and for core account, setup, local inventory, inbox, and teamspace work. Use the specialized `observal-agents`, `observal-registry`, `observal-ops`, `observal-ard-seo`, `observal-admin`, or `observal-advanced` skill when the user is operating Observal itself and its description matches more closely.
 
 ## Decide first
 
@@ -59,6 +59,7 @@ Details and edge cases: [Discovery](references/discovery.md).
 | Create, edit, release, or pull an Agent | Use `observal-agents` |
 | Search, submit, install, or version a component | Use `observal-registry` |
 | Traces, telemetry, logs, ratings, or insight reports | Use `observal-ops` |
+| Make an owned MCP, skill, or hook easier to find in discovery | Use `observal-ard-seo` |
 | Reviews, users, settings, security, or server administration | Use `observal-admin` |
 | Reconciliation, CLI version recovery, or explicit offline fallback | Use `observal-advanced` |
 
